@@ -5,9 +5,7 @@ import {
   saveAssessment,
 } from "../services/assessmentService.js";
 
-import type {
-  AuthenticatedRequest,
-} from "../middleware/authMiddleware.js";
+import type { AuthenticatedRequest } from "../middleware/authMiddleware.js";
 
 const parseIds = (req: AuthenticatedRequest) => {
   const patientId = Number(req.body?.patientId);
@@ -24,22 +22,51 @@ const parseIds = (req: AuthenticatedRequest) => {
   return { patientId, medicineId };
 };
 
-const handleAssessmentError = (
-  res: Response,
-  error: unknown,
-) => {
+const parseMedicationDetails = (req: AuthenticatedRequest) => {
+  const dosage = String(req.body?.dosage ?? "").trim();
+  const frequency = String(req.body?.frequency ?? "").trim();
+  const endDate = String(req.body?.endDate ?? "").trim();
+
+  if (!dosage || dosage.length > 100) {
+    throw new Error("A valid dosage is required");
+  }
+
+  if (!frequency || frequency.length > 100) {
+    throw new Error("A valid frequency is required");
+  }
+
+  if (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+    throw new Error("A valid end date is required");
+  }
+
+  if (endDate) {
+    const parsedEndDate = new Date(`${endDate}T00:00:00.000Z`);
+
+    if (
+      Number.isNaN(parsedEndDate.getTime()) ||
+      parsedEndDate.toISOString().slice(0, 10) !== endDate
+    ) {
+      throw new Error("A valid end date is required");
+    }
+  }
+
+  return { dosage, frequency, endDate: endDate || null };
+};
+
+const handleAssessmentError = (res: Response, error: unknown) => {
   console.error("Assessment error:", error);
 
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Assessment failed";
+  const message = error instanceof Error ? error.message : "Assessment failed";
 
-  if (
-    message === "Patient not found" ||
-    message === "Medicine not found"
-  ) {
+  if (message === "Patient not found" || message === "Medicine not found") {
     return res.status(404).json({
+      success: false,
+      message,
+    });
+  }
+
+  if (message.startsWith("A valid ")) {
+    return res.status(400).json({
       success: false,
       message,
     });
@@ -122,11 +149,13 @@ export const createAssessment = async (
     }
 
     const { patientId, medicineId } = parseIds(req);
+    const medicationDetails = parseMedicationDetails(req);
 
     const result = await saveAssessment({
       doctorId,
       patientId,
       medicineId,
+      ...medicationDetails,
     });
 
     return res.status(201).json({

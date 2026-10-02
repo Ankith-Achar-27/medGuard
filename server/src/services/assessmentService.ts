@@ -14,6 +14,12 @@ interface AssessmentInput {
   medicineId: number;
 }
 
+interface SaveAssessmentInput extends AssessmentInput {
+  dosage: string;
+  frequency: string;
+  endDate: string | null;
+}
+
 export interface AssessmentResult {
   assessmentId: number | null;
   createdAt: string | null;
@@ -49,7 +55,11 @@ export interface AssessmentResult {
 
   prediction: {
     medicineText: string;
-    predictedADRs: { adr: string; score: number; likelihood: "Low" | "Moderate" | "High" }[];
+    predictedADRs: {
+      adr: string;
+      score: number;
+      likelihood: "Low" | "Moderate" | "High";
+    }[];
     threshold: number;
     topScores: { adr: string; score: number }[];
   };
@@ -89,47 +99,40 @@ const calculateRisk = (
 
   if (highCount >= 2 || highestScore >= 1.5) {
     riskLevel = "High";
-  } else if (
-    highCount >= 1 ||
-    moderateCount >= 2 ||
-    highestScore >= 0.5
-  ) {
+  } else if (highCount >= 1 || moderateCount >= 2 || highestScore >= 0.5) {
     riskLevel = "Moderate";
   }
 
   // The SVM decision score is not a calibrated probability.
   // This bounded value is only a UI/model-strength indicator.
-  const confidence = Number(
-    (1 / (1 + Math.exp(-highestScore))).toFixed(6),
-  );
+  const confidence = Number((1 / (1 + Math.exp(-highestScore))).toFixed(6));
 
   return { riskLevel, confidence };
 };
 
-const createSafetyUnavailableResult =
-  (): FlaskPatientSafetyData => ({
-    hasAlerts: true,
-    alertCount: 1,
-    criticalCount: 0,
-    warningCount: 1,
-    infoCount: 0,
-    alerts: [
-      {
-        type: "general",
-        severity: "warning",
-        title: "Patient safety analysis unavailable",
-        message:
-          "The patient-specific safety service could not be reached. Do not interpret this assessment as confirming that the selected medicine is safe for this patient.",
-        evidence: "Safety API unavailable",
-      },
-    ],
-    summary: {
-      allergyConflict: false,
-      currentMedicationConflict: false,
-      conditionReviewRequired: true,
-      ageReviewRequired: true,
+const createSafetyUnavailableResult = (): FlaskPatientSafetyData => ({
+  hasAlerts: true,
+  alertCount: 1,
+  criticalCount: 0,
+  warningCount: 1,
+  infoCount: 0,
+  alerts: [
+    {
+      type: "general",
+      severity: "warning",
+      title: "Patient safety analysis unavailable",
+      message:
+        "The patient-specific safety service could not be reached. Do not interpret this assessment as confirming that the selected medicine is safe for this patient.",
+      evidence: "Safety API unavailable",
     },
-  });
+  ],
+  summary: {
+    allergyConflict: false,
+    currentMedicationConflict: false,
+    conditionReviewRequired: true,
+    ageReviewRequired: true,
+  },
+});
 
 /**
  * Evaluates a patient/medicine combination.
@@ -171,9 +174,7 @@ export const evaluateAssessment = async ({
       [patientId],
     );
 
-    const conditions = conditionsResult.rows.map(
-      (row) => row.condition_name,
-    );
+    const conditions = conditionsResult.rows.map((row) => row.condition_name);
 
     const allergiesResult = await client.query(
       `
@@ -185,9 +186,7 @@ export const evaluateAssessment = async ({
       [patientId],
     );
 
-    const allergies = allergiesResult.rows.map(
-      (row) => row.allergy_name,
-    );
+    const allergies = allergiesResult.rows.map((row) => row.allergy_name);
 
     const medicationsResult = await client.query(
       `
@@ -239,9 +238,7 @@ export const evaluateAssessment = async ({
       [medicineId],
     );
 
-    const uses = usesResult.rows.map(
-      (row) => row.use_name,
-    );
+    const uses = usesResult.rows.map((row) => row.use_name);
 
     const sideEffectsResult = await client.query(
       `
@@ -253,10 +250,9 @@ export const evaluateAssessment = async ({
       [medicineId],
     );
 
-    const documentedSideEffects =
-      sideEffectsResult.rows.map(
-        (row) => row.side_effect_name,
-      );
+    const documentedSideEffects = sideEffectsResult.rows.map(
+      (row) => row.side_effect_name,
+    );
 
     const flaskMedicine: FlaskMedicine = {
       name: medicine.name,
@@ -273,9 +269,7 @@ export const evaluateAssessment = async ({
       gender: String(patient.gender),
       conditions,
       allergies,
-      medications: medications.map(
-        (medication) => medication.medicineName,
-      ),
+      medications: medications.map((medication) => medication.medicineName),
     };
 
     const mlResult = await predictADR(flaskMedicine);
@@ -325,13 +319,11 @@ export const evaluateAssessment = async ({
       })
       .filter(
         (prediction) =>
-          prediction.adr.length > 0 &&
-          Number.isFinite(prediction.score),
+          prediction.adr.length > 0 && Number.isFinite(prediction.score),
       )
       .sort((a, b) => b.score - a.score);
 
-    const { riskLevel, confidence } =
-      calculateRisk(predictions);
+    const { riskLevel, confidence } = calculateRisk(predictions);
 
     return {
       // Preview has no database ID.
@@ -363,13 +355,11 @@ export const evaluateAssessment = async ({
 
       prediction: {
         medicineText: mlResult.data.medicineText,
-        predictedADRs: predictions.map(
-          (prediction) => ({
-            adr: prediction.adr,
-            score: prediction.score,
-            likelihood: prediction.likelihood,
-          }),
-        ),
+        predictedADRs: predictions.map((prediction) => ({
+          adr: prediction.adr,
+          score: prediction.score,
+          likelihood: prediction.likelihood,
+        })),
         threshold: mlResult.data.threshold,
         topScores: mlResult.data.topScores ?? [],
       },
@@ -395,7 +385,10 @@ export const saveAssessment = async ({
   doctorId,
   patientId,
   medicineId,
-}: AssessmentInput): Promise<AssessmentResult> => {
+  dosage,
+  frequency,
+  endDate,
+}: SaveAssessmentInput): Promise<AssessmentResult> => {
   const evaluated = await evaluateAssessment({
     doctorId,
     patientId,
@@ -442,6 +435,49 @@ export const saveAssessment = async ({
     );
 
     const assessment = assessmentResult.rows[0];
+
+    const currentMedication = await client.query(
+      `
+      SELECT id
+      FROM patient_medications
+      WHERE patient_id = $1
+        AND medicine_id = $2
+        AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+      ORDER BY created_at DESC
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [patientId, medicineId],
+    );
+
+    if (currentMedication.rows.length > 0) {
+      await client.query(
+        `
+        UPDATE patient_medications
+        SET dosage = $2,
+            frequency = $3,
+          end_date = COALESCE($4, end_date)
+        WHERE id = $1
+        `,
+        [currentMedication.rows[0].id, dosage, frequency, endDate],
+      );
+    } else {
+      await client.query(
+        `
+        INSERT INTO patient_medications
+        (
+          patient_id,
+          medicine_id,
+          dosage,
+          frequency,
+          start_date,
+          end_date
+        )
+        VALUES ($1, $2, $3, $4, CURRENT_DATE, $5)
+        `,
+        [patientId, medicineId, dosage, frequency, endDate],
+      );
+    }
 
     for (const prediction of evaluated.predictions) {
       await client.query(

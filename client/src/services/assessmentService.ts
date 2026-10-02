@@ -1,13 +1,11 @@
 import api from "./api";
 import type { Medicine } from "../types/medicine";
 
-
 // ======================================================
 // ADR PREDICTION
 // ======================================================
 
 export interface AssessmentPrediction {
-
   medicineText: string;
 
   predictedADRs: {
@@ -26,23 +24,17 @@ export interface AssessmentPrediction {
   }[];
 }
 
-
 // ======================================================
 // MEDICINE
 // ======================================================
 
 export type AssessmentMedicine = Medicine;
 
-
 // ======================================================
 // PATIENT SAFETY
 // ======================================================
 
-export type SafetySeverity =
-  | "critical"
-  | "warning"
-  | "info";
-
+export type SafetySeverity = "critical" | "warning" | "info";
 
 export type SafetyCheckType =
   | "allergy"
@@ -51,9 +43,7 @@ export type SafetyCheckType =
   | "age"
   | "general";
 
-
 export interface PatientSafetyAlert {
-
   type: SafetyCheckType;
 
   severity: SafetySeverity;
@@ -67,9 +57,7 @@ export interface PatientSafetyAlert {
   evidence?: string;
 }
 
-
 export interface PatientSafetyResult {
-
   hasAlerts: boolean;
 
   alertCount: number;
@@ -83,7 +71,6 @@ export interface PatientSafetyResult {
   alerts: PatientSafetyAlert[];
 
   summary: {
-
     allergyConflict: boolean;
 
     currentMedicationConflict: boolean;
@@ -94,13 +81,11 @@ export interface PatientSafetyResult {
   };
 }
 
-
 // ======================================================
 // ALTERNATIVE
 // ======================================================
 
 export interface AssessmentAlternative {
-
   medicine: AssessmentMedicine;
 
   similarity: number;
@@ -108,23 +93,17 @@ export interface AssessmentAlternative {
   reason: string;
 }
 
-
 // ======================================================
 // MODEL OUTPUT
 // ======================================================
 
-export type RiskLevel =
-  | "Low"
-  | "Moderate"
-  | "High";
-
+export type RiskLevel = "Low" | "Moderate" | "High";
 
 // ======================================================
 // COMPLETE ASSESSMENT
 // ======================================================
 
 export interface AssessmentResponse {
-
   /**
    * null while this is only a preview.
    * A number is returned after the doctor saves the medicine.
@@ -133,26 +112,20 @@ export interface AssessmentResponse {
 
   createdAt: string | null;
 
-
   patient: {
-
     id: number;
 
     name: string;
 
     age: number;
 
-    gender:
-      | "Male"
-      | "Female"
-      | "Other";
+    gender: "Male" | "Female" | "Other";
 
     conditions: string[];
 
     allergies: string[];
 
     medications: {
-
       id: number;
 
       medicineId: number;
@@ -165,21 +138,13 @@ export interface AssessmentResponse {
     }[];
   };
 
+  medicine: AssessmentMedicine;
 
-  medicine:
-    AssessmentMedicine;
+  documentedSideEffects: string[];
 
-
-  documentedSideEffects:
-    string[];
-
-
-  prediction:
-    AssessmentPrediction;
-
+  prediction: AssessmentPrediction;
 
   predictions: {
-
     adr: string;
 
     score: number;
@@ -187,26 +152,18 @@ export interface AssessmentResponse {
     probability: number | null;
   }[];
 
+  patientSafety: PatientSafetyResult;
 
-  patientSafety:
-    PatientSafetyResult;
+  riskLevel: RiskLevel;
 
-
-  riskLevel:
-    RiskLevel;
-
-
-  confidence:
-    number;
+  confidence: number;
 }
-
 
 // ======================================================
 // API WRAPPER
 // ======================================================
 
 interface ApiResponse<T> {
-
   success: boolean;
 
   data: T;
@@ -214,6 +171,11 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+export interface MedicationDetails {
+  dosage: string;
+  frequency: string;
+  endDate: string;
+}
 
 // ======================================================
 // PREVIEW ASSESSMENT
@@ -226,14 +188,13 @@ export const runAssessment = async (
   patientId: number,
   medicineId: number,
 ): Promise<AssessmentResponse> => {
-  const response =
-    await api.post<ApiResponse<AssessmentResponse>>(
-      "/assessments/preview",
-      {
-        patientId,
-        medicineId,
-      },
-    );
+  const response = await api.post<ApiResponse<AssessmentResponse>>(
+    "/assessments/preview",
+    {
+      patientId,
+      medicineId,
+    },
+  );
 
   return response.data.data;
 };
@@ -248,15 +209,16 @@ export const runAssessment = async (
 export const saveAssessment = async (
   patientId: number,
   medicineId: number,
+  medicationDetails: MedicationDetails,
 ): Promise<AssessmentResponse> => {
-  const response =
-    await api.post<ApiResponse<AssessmentResponse>>(
-      "/assessments",
-      {
-        patientId,
-        medicineId,
-      },
-    );
+  const response = await api.post<ApiResponse<AssessmentResponse>>(
+    "/assessments",
+    {
+      patientId,
+      medicineId,
+      ...medicationDetails,
+    },
+  );
 
   return response.data.data;
 };

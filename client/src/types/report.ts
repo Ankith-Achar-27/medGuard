@@ -1,7 +1,4 @@
-export type RiskLevel =
-  | "Low"
-  | "Moderate"
-  | "High";
+export type RiskLevel = "Low" | "Moderate" | "High";
 
 export interface ReportPrediction {
   adr: string;
@@ -19,6 +16,10 @@ export interface ReportAssessment {
   confidence: number;
   createdAt: string;
   adrCount: number;
+  patientMedicationId: number | null;
+  dosage: string | null;
+  frequency: string | null;
+  endDate: string | null;
   predictions?: ReportPrediction[];
 }
 

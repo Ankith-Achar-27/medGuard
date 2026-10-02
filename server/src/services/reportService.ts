@@ -1,9 +1,6 @@
 import pool from "../config/database.js";
 
-export type RiskLevel =
-  | "Low"
-  | "Moderate"
-  | "High";
+export type RiskLevel = "Low" | "Moderate" | "High";
 
 export interface ReportAssessment {
   id: number;
@@ -15,6 +12,10 @@ export interface ReportAssessment {
   confidence: number;
   createdAt: string;
   adrCount: number;
+  patientMedicationId: number | null;
+  dosage: string | null;
+  frequency: string | null;
+  endDate: string | null;
   predictions?: {
     adr: string;
     score: number | null;
@@ -36,27 +37,17 @@ export interface ReportSummary {
   recentAssessments: ReportAssessment[];
 }
 
-const normalizeRiskLevel = (
-  value: unknown,
-): RiskLevel => {
-  if (
-    value === "High" ||
-    value === "Moderate" ||
-    value === "Low"
-  ) {
+const normalizeRiskLevel = (value: unknown): RiskLevel => {
+  if (value === "High" || value === "Moderate" || value === "Low") {
     return value;
   }
 
   return "Low";
 };
 
-const toCount = (
-  value: unknown,
-) => Number(value ?? 0);
+const toCount = (value: unknown) => Number(value ?? 0);
 
-const mapAssessmentRow = (
-  row: Record<string, unknown>,
-): ReportAssessment => ({
+const mapAssessmentRow = (row: Record<string, unknown>): ReportAssessment => ({
   id: Number(row.id),
   patientId: Number(row.patientId),
   patientName: String(row.patientName ?? ""),
@@ -66,8 +57,13 @@ const mapAssessmentRow = (
   confidence: Number(row.confidence ?? 0),
   createdAt: String(row.createdAt),
   adrCount: Number(row.adrCount ?? 0),
+  patientMedicationId:
+    row.patientMedicationId == null ? null : Number(row.patientMedicationId),
+  dosage: row.dosage == null ? null : String(row.dosage),
+  frequency: row.frequency == null ? null : String(row.frequency),
+  endDate: row.endDate == null ? null : String(row.endDate).slice(0, 10),
   predictions: Array.isArray(row.predictions)
-    ? row.predictions as ReportAssessment["predictions"]
+    ? (row.predictions as ReportAssessment["predictions"])
     : undefined,
 });
 
@@ -86,6 +82,10 @@ export const listAssessmentReports = async (
       COALESCE(a.confidence, 0)::float AS confidence,
       a.created_at AS "createdAt",
       COUNT(aa.id)::int AS "adrCount",
+      pm.id AS "patientMedicationId",
+      pm.dosage,
+      pm.frequency,
+      pm.end_date AS "endDate",
       COALESCE(
         JSON_AGG(
           JSON_BUILD_OBJECT(
@@ -104,6 +104,15 @@ export const listAssessmentReports = async (
       ON m.id = a.medicine_id
     LEFT JOIN assessment_adrs aa
       ON aa.assessment_id = a.id
+    LEFT JOIN LATERAL (
+      SELECT id, dosage, frequency, end_date
+      FROM patient_medications
+      WHERE patient_id = a.patient_id
+        AND medicine_id = a.medicine_id
+        AND created_at <= a.created_at
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) pm ON TRUE
     WHERE a.doctor_id = $1
     GROUP BY
       a.id,
@@ -113,7 +122,11 @@ export const listAssessmentReports = async (
       m.name,
       a.risk_level,
       a.confidence,
-      a.created_at
+      a.created_at,
+      pm.id,
+      pm.dosage,
+      pm.frequency,
+      pm.end_date
     ORDER BY a.created_at DESC
     LIMIT 100
     `,

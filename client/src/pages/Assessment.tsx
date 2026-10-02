@@ -24,45 +24,41 @@ import {
 import { getMedicineById } from "../services/medicineService";
 
 import type { Patient } from "../types/patient";
-import type {
-  AssessmentPatient,
-  Medicine,
-} from "../types/assessment";
+import type { AssessmentPatient, Medicine } from "../types/assessment";
 
 function Assessment() {
   const [searchParams] = useSearchParams();
 
-  const [patients, setPatients] = useState<
-    AssessmentPatient[]
-  >([]);
+  const [patients, setPatients] = useState<AssessmentPatient[]>([]);
 
   const [selectedPatient, setSelectedPatient] =
     useState<AssessmentPatient | null>(null);
 
-  const [selectedMedicine, setSelectedMedicine] =
-    useState<Medicine | null>(null);
+  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(
+    null,
+  );
 
-  const [loadingPatients, setLoadingPatients] =
-    useState(true);
+  const [loadingPatients, setLoadingPatients] = useState(true);
 
-  const [loadingMedicineDetails, setLoadingMedicineDetails] =
-    useState(false);
+  const [loadingMedicineDetails, setLoadingMedicineDetails] = useState(false);
 
-  const [assessmentLoading, setAssessmentLoading] =
-    useState(false);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
 
-  const [savingAssessment, setSavingAssessment] =
-    useState(false);
+  const [savingAssessment, setSavingAssessment] = useState(false);
+
+  const [medicationDetails, setMedicationDetails] = useState({
+    dosage: "",
+    frequency: "",
+    endDate: "",
+  });
 
   const [error, setError] = useState("");
-  const [alternativeWarning, setAlternativeWarning] =
-    useState("");
+  const [alternativeWarning, setAlternativeWarning] = useState("");
 
   const [assessmentData, setAssessmentData] =
     useState<AssessmentResponse | null>(null);
 
-  const [alternatives, setAlternatives] =
-    useState<AlternativeResult[]>([]);
+  const [alternatives, setAlternatives] = useState<AlternativeResult[]>([]);
 
   // ==================================================
   // LOAD PATIENTS
@@ -76,41 +72,35 @@ function Assessment() {
 
         const data = await getPatients();
 
-        const mappedPatients: AssessmentPatient[] =
-          data.map((patient: Patient) => ({
+        const mappedPatients: AssessmentPatient[] = data.map(
+          (patient: Patient) => ({
             id: patient.id,
             name: patient.name,
             age: patient.age,
             gender: patient.gender,
             conditions: patient.conditions ?? [],
             allergies: patient.allergies ?? [],
-            medications:
-              (patient.medications ?? []).map(
-                (medicine) => medicine.medicineName
-              ),
-          }));
+            medications: (patient.medications ?? []).map(
+              (medicine) => medicine.medicineName,
+            ),
+          }),
+        );
 
         setPatients(mappedPatients);
 
-        const patientIdParam =
-          searchParams.get("patientId");
+        const patientIdParam = searchParams.get("patientId");
 
         if (patientIdParam) {
           const patientId = Number(patientIdParam);
 
-          const patient = mappedPatients.find(
-            (item) => item.id === patientId
-          );
+          const patient = mappedPatients.find((item) => item.id === patientId);
 
           if (patient) {
             setSelectedPatient(patient);
           }
         }
       } catch (err) {
-        console.error(
-          "Failed to load patients:",
-          err
-        );
+        console.error("Failed to load patients:", err);
 
         setError("Failed to load patients.");
       } finally {
@@ -125,11 +115,10 @@ function Assessment() {
   // PATIENT SELECTION
   // ==================================================
 
-  const handlePatientSelect = (
-    patient: AssessmentPatient | null
-  ) => {
+  const handlePatientSelect = (patient: AssessmentPatient | null) => {
     setSelectedPatient(patient);
     setSelectedMedicine(null);
+    setMedicationDetails({ dosage: "", frequency: "", endDate: "" });
     setAssessmentData(null);
     setAlternatives([]);
     setAlternativeWarning("");
@@ -140,11 +129,10 @@ function Assessment() {
   // MEDICINE SELECTION
   // ==================================================
 
-  const handleMedicineSelect = async (
-    medicine: Medicine
-  ) => {
+  const handleMedicineSelect = async (medicine: Medicine) => {
     try {
       setSelectedMedicine(medicine);
+      setMedicationDetails({ dosage: "", frequency: "", endDate: "" });
       setAssessmentData(null);
       setAlternatives([]);
       setAlternativeWarning("");
@@ -152,23 +140,18 @@ function Assessment() {
 
       setLoadingMedicineDetails(true);
 
-      const fullMedicine = await getMedicineById(
-        medicine.id
-      );
+      const fullMedicine = await getMedicineById(medicine.id);
 
       setSelectedMedicine(fullMedicine);
     } catch (err) {
-      console.error(
-        "Failed to load medicine details:",
-        err
-      );
+      console.error("Failed to load medicine details:", err);
 
       // Keep the medicine selected even if the
       // detailed request fails.
       setSelectedMedicine(medicine);
 
       setError(
-        "Medicine selected, but complete medicine details could not be loaded."
+        "Medicine selected, but complete medicine details could not be loaded.",
       );
     } finally {
       setLoadingMedicineDetails(false);
@@ -181,6 +164,7 @@ function Assessment() {
 
   const handleMedicineClear = () => {
     setSelectedMedicine(null);
+    setMedicationDetails({ dosage: "", frequency: "", endDate: "" });
     setAssessmentData(null);
     setAlternatives([]);
     setAlternativeWarning("");
@@ -199,16 +183,12 @@ function Assessment() {
 
   const handleRunAssessment = async () => {
     if (!selectedPatient) {
-      setError(
-        "Please select a patient before running the assessment."
-      );
+      setError("Please select a patient before running the assessment.");
       return;
     }
 
     if (!selectedMedicine) {
-      setError(
-        "Please select a medicine before running the assessment."
-      );
+      setError("Please select a medicine before running the assessment.");
       return;
     }
 
@@ -221,35 +201,27 @@ function Assessment() {
 
       const result = await runAssessment(
         selectedPatient.id,
-        selectedMedicine.id
+        selectedMedicine.id,
       );
 
       setAssessmentData(result);
 
       try {
-        const alternativesResult =
-          await getAlternatives(selectedMedicine.id);
+        const alternativesResult = await getAlternatives(selectedMedicine.id);
 
-        setAlternatives(
-          alternativesResult.alternatives
-        );
+        setAlternatives(alternativesResult.alternatives);
       } catch (alternativeError) {
-        console.error(
-          "Alternative search failed:",
-          alternativeError
-        );
+        console.error("Alternative search failed:", alternativeError);
 
         setAlternativeWarning(
-          "Assessment completed, but alternative medicines could not be loaded."
+          "Assessment completed, but alternative medicines could not be loaded.",
         );
       }
     } catch (err) {
       console.error("Assessment failed:", err);
 
       setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to run assessment."
+        err instanceof Error ? err.message : "Failed to run assessment.",
       );
     } finally {
       setAssessmentLoading(false);
@@ -265,9 +237,7 @@ function Assessment() {
   // its ADRs and safety information.
   //
 
-  const handleAlternativeSelect = async (
-    medicineId: number
-  ) => {
+  const handleAlternativeSelect = async (medicineId: number) => {
     if (!selectedPatient) {
       return;
     }
@@ -277,29 +247,23 @@ function Assessment() {
       setError("");
       setAlternativeWarning("");
 
-      const medicine =
-        await getMedicineById(medicineId);
+      const medicine = await getMedicineById(medicineId);
 
       setSelectedMedicine(medicine);
+      setMedicationDetails({ dosage: "", frequency: "", endDate: "" });
 
-      const result = await runAssessment(
-        selectedPatient.id,
-        medicineId
-      );
+      const result = await runAssessment(selectedPatient.id, medicineId);
 
       setAssessmentData(result);
 
       try {
-        const alternativesResult =
-          await getAlternatives(medicineId);
+        const alternativesResult = await getAlternatives(medicineId);
 
-        setAlternatives(
-          alternativesResult.alternatives
-        );
+        setAlternatives(alternativesResult.alternatives);
       } catch {
         setAlternatives([]);
         setAlternativeWarning(
-          "The medicine was evaluated, but alternative medicines could not be loaded."
+          "The medicine was evaluated, but alternative medicines could not be loaded.",
         );
       }
 
@@ -308,15 +272,12 @@ function Assessment() {
         behavior: "smooth",
       });
     } catch (err) {
-      console.error(
-        "Alternative assessment failed:",
-        err
-      );
+      console.error("Alternative assessment failed:", err);
 
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to evaluate the selected alternative."
+          : "Failed to evaluate the selected alternative.",
       );
     } finally {
       setAssessmentLoading(false);
@@ -333,9 +294,15 @@ function Assessment() {
 
   const handleSaveAssessment = async () => {
     if (!selectedPatient || !selectedMedicine) {
-      setError(
-        "Please select a patient and medicine first."
-      );
+      setError("Please select a patient and medicine first.");
+      return;
+    }
+
+    if (
+      !medicationDetails.dosage.trim() ||
+      !medicationDetails.frequency.trim()
+    ) {
+      setError("Enter the prescribed dosage and frequency before saving.");
       return;
     }
 
@@ -345,7 +312,8 @@ function Assessment() {
 
       const saved = await saveAssessment(
         selectedPatient.id,
-        selectedMedicine.id
+        selectedMedicine.id,
+        medicationDetails,
       );
 
       setAssessmentData(saved);
@@ -353,25 +321,19 @@ function Assessment() {
       // Refresh the alternatives after the final save.
       // They remain suggestions only; they are not stored.
       try {
-        const alternativesResult =
-          await getAlternatives(selectedMedicine.id);
+        const alternativesResult = await getAlternatives(selectedMedicine.id);
 
-        setAlternatives(
-          alternativesResult.alternatives
-        );
+        setAlternatives(alternativesResult.alternatives);
       } catch {
         // The assessment itself is already saved.
       }
     } catch (err) {
-      console.error(
-        "Failed to save assessment:",
-        err
-      );
+      console.error("Failed to save assessment:", err);
 
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to save the selected medicine."
+          : "Failed to save the selected medicine.",
       );
     } finally {
       setSavingAssessment(false);
@@ -385,14 +347,12 @@ function Assessment() {
   return (
     <div className="min-h-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-
         {/* ==================================================
             PAGE HEADER
         ================================================== */}
 
         <div className="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
             <div>
               <div className="mb-2 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-700">
                 Clinical Decision Support
@@ -403,19 +363,19 @@ function Assessment() {
               </h1>
 
               <p className="mt-2 max-w-2xl text-base leading-6 text-slate-600">
-                Evaluate potential adverse drug
-                reactions and review documented
-                side effects and similar medicines
-                for a selected patient.
+                Evaluate potential adverse drug reactions and review documented
+                side effects and similar medicines for a selected patient.
               </p>
             </div>
 
             {assessmentData && (
-              <div className={`flex-shrink-0 rounded-xl border px-5 py-4 ${
-                assessmentData.assessmentId
-                  ? "border-green-200 bg-green-50"
-                  : "border-amber-200 bg-amber-50"
-              }`}>
+              <div
+                className={`flex-shrink-0 rounded-xl border px-5 py-4 ${
+                  assessmentData.assessmentId
+                    ? "border-green-200 bg-green-50"
+                    : "border-amber-200 bg-amber-50"
+                }`}
+              >
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {assessmentData.assessmentId
                     ? "Saved Assessment"
@@ -429,7 +389,6 @@ function Assessment() {
                 </p>
               </div>
             )}
-
           </div>
         </div>
 
@@ -444,13 +403,9 @@ function Assessment() {
             </div>
 
             <div>
-              <p className="text-sm font-bold text-red-800">
-                Assessment Error
-              </p>
+              <p className="text-sm font-bold text-red-800">Assessment Error</p>
 
-              <p className="mt-1 text-sm text-red-700">
-                {error}
-              </p>
+              <p className="mt-1 text-sm text-red-700">{error}</p>
             </div>
           </div>
         )}
@@ -460,16 +415,13 @@ function Assessment() {
         ================================================== */}
 
         <div className="grid gap-6 lg:grid-cols-2">
-
           {/* ==================================================
               PATIENT
           ================================================== */}
 
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
             <div className="border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
-
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-lg font-bold text-blue-700">
                   01
                 </div>
@@ -483,12 +435,10 @@ function Assessment() {
                     Select Patient
                   </h2>
                 </div>
-
               </div>
             </div>
 
             <div className="px-6 py-6">
-
               {loadingPatients ? (
                 <div className="flex min-h-28 items-center justify-center rounded-xl bg-slate-50">
                   <p className="text-base font-medium text-slate-500">
@@ -498,15 +448,11 @@ function Assessment() {
               ) : (
                 <PatientDetailsForm
                   patient={selectedPatient}
-                  onPatientChange={
-                    handlePatientSelect
-                  }
+                  onPatientChange={handlePatientSelect}
                   patients={patients}
                 />
               )}
-
             </div>
-
           </section>
 
           {/* ==================================================
@@ -514,10 +460,8 @@ function Assessment() {
           ================================================== */}
 
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
             <div className="border-b border-slate-200 px-6 py-5">
               <div className="flex items-center gap-4">
-
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-lg font-bold text-emerald-700">
                   02
                 </div>
@@ -531,60 +475,34 @@ function Assessment() {
                     Select Medicine
                   </h2>
                 </div>
-
               </div>
             </div>
 
             <div className="px-6 py-6">
-
               <MedicineSearch
-                selectedMedicine={
-                  selectedMedicine
-                }
-                onSelect={
-                  handleMedicineSelect
-                }
-                onClear={
-                  handleMedicineClear
-                }
+                selectedMedicine={selectedMedicine}
+                onSelect={handleMedicineSelect}
+                onClear={handleMedicineClear}
               />
 
               {loadingMedicineDetails && (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
-                  <Loader2
-                    size={17}
-                    className="animate-spin"
-                  />
-
-                  Loading complete medicine
-                  information...
+                  <Loader2 size={17} className="animate-spin" />
+                  Loading complete medicine information...
                 </div>
               )}
 
-              {selectedMedicine &&
-                !loadingMedicineDetails && (
-                  <div className="mt-5 space-y-5">
+              {selectedMedicine && !loadingMedicineDetails && (
+                <div className="mt-5 space-y-5">
+                  <MedicineDetails medicine={selectedMedicine} />
 
-                    <MedicineDetails
-                      medicine={
-                        selectedMedicine
-                      }
-                    />
-
-                    <SideEffects
-                      sideEffects={
-                        selectedMedicine.sideEffects ??
-                        []
-                      }
-                    />
-
-                  </div>
-                )}
-
+                  <SideEffects
+                    sideEffects={selectedMedicine.sideEffects ?? []}
+                  />
+                </div>
+              )}
             </div>
-
           </section>
-
         </div>
 
         {/* ==================================================
@@ -592,12 +510,9 @@ function Assessment() {
         ================================================== */}
 
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-
           <div className="flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-
             <div>
               <div className="flex items-center gap-3">
-
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-50 text-lg font-bold text-violet-700">
                   03
                 </div>
@@ -611,15 +526,14 @@ function Assessment() {
                     Run AI Assessment
                   </h2>
                 </div>
-
               </div>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-  The selected medicine will be evaluated by the ADR
-  prediction model, while the patient's recorded
-  allergies, conditions, age, and current medications
-  will be checked by the patient-safety layer.
-</p>
+                The selected medicine will be evaluated by the ADR prediction
+                model, while the patient's recorded allergies, conditions, age,
+                and current medications will be checked by the patient-safety
+                layer.
+              </p>
             </div>
 
             <button
@@ -636,34 +550,26 @@ function Assessment() {
             >
               {assessmentLoading ? (
                 <>
-                  <Loader2
-                    size={18}
-                    className="mr-2 animate-spin"
-                  />
+                  <Loader2 size={18} className="mr-2 animate-spin" />
                   Analyzing...
                 </>
               ) : (
                 "Run ADR Assessment"
               )}
             </button>
-
           </div>
 
           {assessmentLoading && (
             <div className="border-t border-slate-200 bg-blue-50 px-6 py-4">
               <div className="flex items-center gap-3">
-
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
 
                 <p className="text-sm font-semibold text-blue-800">
-                  Analyzing medicine information
-                  and generating assessment...
+                  Analyzing medicine information and generating assessment...
                 </p>
-
               </div>
             </div>
           )}
-
         </section>
 
         {/* ==================================================
@@ -672,12 +578,10 @@ function Assessment() {
 
         {assessmentData && (
           <div className="space-y-6">
-
             {/* RESULT HEADER */}
 
             <div className="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
               <div className="flex items-center gap-4">
-
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 text-sm font-bold text-green-700">
                   OK
                 </div>
@@ -692,18 +596,15 @@ function Assessment() {
                   </h2>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    Review the model output and
-                    medicine information below.
+                    Review the model output and medicine information below.
                   </p>
                 </div>
-
               </div>
             </div>
 
             {/* PATIENT + MEDICINE SUMMARY */}
 
             <div className="grid gap-6 lg:grid-cols-2">
-
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <p className="text-xs font-bold uppercase tracking-wider text-blue-600">
                   Patient
@@ -714,7 +615,6 @@ function Assessment() {
                 </h3>
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
-
                   <div className="rounded-xl bg-slate-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Age
@@ -734,12 +634,10 @@ function Assessment() {
                       {assessmentData.patient.gender}
                     </p>
                   </div>
-
                 </div>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
                 <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">
                   Medicine Assessed
                 </p>
@@ -755,28 +653,19 @@ function Assessment() {
                 )}
 
                 <div className="mt-4 flex flex-wrap gap-2">
-
                   {assessmentData.medicine.therapeuticClass && (
                     <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
-                      {
-                        assessmentData.medicine
-                          .therapeuticClass
-                      }
+                      {assessmentData.medicine.therapeuticClass}
                     </span>
                   )}
 
                   {assessmentData.medicine.actionClass && (
                     <span className="rounded-full bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700">
-                      {
-                        assessmentData.medicine
-                          .actionClass
-                      }
+                      {assessmentData.medicine.actionClass}
                     </span>
                   )}
-
                 </div>
               </div>
-
             </div>
 
             {/* EXISTING ASSESSMENT RESULT */}
@@ -785,38 +674,25 @@ function Assessment() {
     ASSESSMENT SUMMARY
 ================================================== */}
 
-<div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+              <AssessmentResultCard result={assessmentData} />
+            </div>
 
-  <AssessmentResultCard
-    result={assessmentData}
-  />
-
-</div>
-
-
-{/* ==================================================
+            {/* ==================================================
     PATIENT SAFETY
 ================================================== */}
 
-<div className="rounded-2xl border border-red-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="rounded-2xl border border-red-200 bg-white p-6 shadow-sm sm:p-8">
+              <PatientSafetyAlerts safety={assessmentData.patientSafety} />
+            </div>
 
-  <PatientSafetyAlerts
-    safety={
-      assessmentData.patientSafety
-    }
-  />
-
-</div>
-
-
-{/* ==================================================
+            {/* ==================================================
     PREDICTED ADR
 ================================================== */}
 
             {/* PREDICTED ADR */}
 
             <div className="rounded-2xl border border-orange-200 bg-white p-6 shadow-sm sm:p-8">
-
               <div className="mb-5">
                 <p className="text-xs font-bold uppercase tracking-wider text-orange-600">
                   AI Model Output
@@ -827,35 +703,22 @@ function Assessment() {
                 </h3>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Potential ADRs identified by
-                  the trained prediction model.
+                  Potential ADRs identified by the trained prediction model.
                 </p>
               </div>
 
-              <PredictedADRList
-                prediction={
-                  assessmentData.prediction
-                }
-              />
-
+              <PredictedADRList prediction={assessmentData.prediction} />
             </div>
 
             {/* DOCUMENTED SIDE EFFECTS */}
 
             <div className="rounded-2xl border border-orange-200 bg-white p-6 shadow-sm sm:p-8">
-
-              <SideEffects
-                sideEffects={
-                  assessmentData.documentedSideEffects
-                }
-              />
-
+              <SideEffects sideEffects={assessmentData.documentedSideEffects} />
             </div>
 
             {/* ALTERNATIVES */}
 
             <div className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm sm:p-8">
-
               {alternativeWarning && (
                 <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
                   {alternativeWarning}
@@ -864,49 +727,103 @@ function Assessment() {
 
               <Alternatives
                 alternatives={alternatives}
-                selectedMedicineId={
-                  assessmentData.medicine.id
-                }
-                onSelectAlternative={
-                  handleAlternativeSelect
-                }
+                selectedMedicineId={assessmentData.medicine.id}
+                onSelectAlternative={handleAlternativeSelect}
               />
-
             </div>
 
             {/* FINAL SAVE */}
 
             {!assessmentData.assessmentId ? (
               <div className="rounded-2xl border border-green-200 bg-green-50 p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold text-green-900">
-                      Medicine selection
-                    </h3>
+                <div className="space-y-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-green-900">
+                        Medicine selection
+                      </h3>
 
-                    <p className="mt-1 max-w-2xl text-sm leading-6 text-green-800">
-                      This result is only a preview. Nothing has
-                      been added to the patient's history yet.
-                      Save it only when you have selected{" "}
-                      <span className="font-bold">
-                        {assessmentData.medicine.name}
-                      </span>{" "}
-                      for this patient.
-                    </p>
+                      <p className="mt-1 max-w-2xl text-sm leading-6 text-green-800">
+                        This result is only a preview. Nothing has been added to
+                        the patient's history yet. Save it only when you have
+                        selected{" "}
+                        <span className="font-bold">
+                          {assessmentData.medicine.name}
+                        </span>{" "}
+                        for this patient.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <label className="text-sm font-semibold text-slate-700">
+                      Dosage
+                      <input
+                        type="text"
+                        required
+                        maxLength={100}
+                        value={medicationDetails.dosage}
+                        onChange={(event) =>
+                          setMedicationDetails((current) => ({
+                            ...current,
+                            dosage: event.target.value,
+                          }))
+                        }
+                        placeholder="Enter prescribed dosage"
+                        className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+                      />
+                    </label>
+
+                    <label className="text-sm font-semibold text-slate-700">
+                      Frequency
+                      <input
+                        type="text"
+                        required
+                        maxLength={100}
+                        value={medicationDetails.frequency}
+                        onChange={(event) =>
+                          setMedicationDetails((current) => ({
+                            ...current,
+                            frequency: event.target.value,
+                          }))
+                        }
+                        placeholder="Enter prescribed frequency"
+                        className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+                      />
+                    </label>
+
+                    <label className="text-sm font-semibold text-slate-700">
+                      End date{" "}
+                      <span className="font-normal text-slate-500">
+                        (optional, leave blank if ongoing)
+                      </span>
+                      <input
+                        type="date"
+                        value={medicationDetails.endDate}
+                        onChange={(event) =>
+                          setMedicationDetails((current) => ({
+                            ...current,
+                            endDate: event.target.value,
+                          }))
+                        }
+                        className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+                      />
+                    </label>
                   </div>
 
                   <button
                     type="button"
                     onClick={handleSaveAssessment}
-                    disabled={savingAssessment}
+                    disabled={
+                      savingAssessment ||
+                      !medicationDetails.dosage.trim() ||
+                      !medicationDetails.frequency.trim()
+                    }
                     className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-green-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
                     {savingAssessment ? (
                       <>
-                        <Loader2
-                          size={18}
-                          className="mr-2 animate-spin"
-                        />
+                        <Loader2 size={18} className="mr-2 animate-spin" />
                         Saving...
                       </>
                     ) : (
@@ -918,15 +835,13 @@ function Assessment() {
             ) : (
               <div className="flex flex-col gap-1 rounded-xl border border-green-200 bg-green-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-semibold text-green-800">
-                  Assessment #{assessmentData.assessmentId} saved to patient history.
+                  Assessment #{assessmentData.assessmentId} saved to patient
+                  history.
                 </p>
 
                 {assessmentData.createdAt && (
                   <p className="text-sm text-green-700">
-                    Saved{" "}
-                    {new Date(
-                      assessmentData.createdAt
-                    ).toLocaleString()}
+                    Saved {new Date(assessmentData.createdAt).toLocaleString()}
                   </p>
                 )}
               </div>
@@ -935,40 +850,28 @@ function Assessment() {
             {/* DISCLAIMER */}
 
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5">
-
               <div className="flex gap-4">
-
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-amber-100 font-bold text-amber-700">
                   !
                 </div>
 
                 <div>
-
                   <h3 className="text-base font-bold text-amber-900">
                     Clinical Review Required
                   </h3>
 
                   <p className="mt-1 text-sm leading-6 text-amber-800">
-                    MedGuard is an academic
-                    clinical decision-support
-                    prototype. Predicted ADRs are
-                    model outputs and should be
-                    reviewed by a qualified
-                    clinician. This system does
-                    not provide a diagnosis or
-                    automatically prescribe or
-                    substitute medicines.
+                    MedGuard is an academic clinical decision-support prototype.
+                    Predicted ADRs are model outputs and should be reviewed by a
+                    qualified clinician. This system does not provide a
+                    diagnosis or automatically prescribe or substitute
+                    medicines.
                   </p>
-
                 </div>
-
               </div>
-
             </div>
-
           </div>
         )}
-
       </div>
     </div>
   );
