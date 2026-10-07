@@ -22,8 +22,6 @@ build/
 **/build/
 
 # ML files
-api/model/
-*.joblib
 *.pkl
 *.csv
 
