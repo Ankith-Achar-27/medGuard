@@ -40,6 +40,58 @@ app.get("/api/health", (_req, res) => {
 });
 
 /*
+ * Admin / Dataset import endpoints
+ */
+let isImporting = false;
+let lastImportStatus = "idle";
+
+app.get("/api/admin/import-status", async (_req, res) => {
+  try {
+    const { default: pool } = await import("./config/database.js");
+    const countRes = await pool.query(
+      "SELECT COUNT(*)::integer AS count FROM medicines"
+    );
+    res.json({
+      success: true,
+      isImporting,
+      lastImportStatus,
+      medicinesCount: countRes.rows[0]?.count ?? 0,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
+});
+
+app.all("/api/admin/import-medicines", async (_req, res) => {
+  if (isImporting) {
+    return res.json({
+      success: true,
+      message: "Import is already running in background.",
+      status: lastImportStatus,
+    });
+  }
+
+  isImporting = true;
+  lastImportStatus = "running";
+
+  res.json({
+    success: true,
+    message: "Started 222,801 medicines background import on server.",
+  });
+
+  try {
+    const { importMedicines } = await import("./scripts/importMedicines.js");
+    await importMedicines();
+    lastImportStatus = "completed";
+  } catch (err: any) {
+    lastImportStatus = `failed: ${err?.message}`;
+    console.error("Dataset import failed:", err);
+  } finally {
+    isImporting = false;
+  }
+});
+
+/*
  * Routes
  */
 app.use("/api/patients", patientRoutes);

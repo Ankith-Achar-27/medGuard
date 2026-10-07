@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { pipeline } from "stream/promises";
+import zlib from "zlib";
 
 import { from as copyFrom } from "pg-copy-streams";
 
@@ -18,31 +19,28 @@ const __filename =
 const __dirname =
   path.dirname(__filename);
 
-/*
- * importMedicines.ts is located at:
- *
- * server/src/scripts/importMedicines.ts
- *
- * The CSV is located at:
- *
- * api/model/medicine_dataset_cleaned.csv
- *
- * Therefore:
- *
- * __dirname
- *   → server/src/scripts
- *
- * ../../../
- *   → project root
- *
- * /api/model/
- *   → CSV location
- */
+const resolveCsvPath = (): string => {
+  const candidatePaths = [
+    path.resolve(__dirname, "../../data/medicine_dataset_cleaned.csv.gz"),
+    path.resolve(__dirname, "../../../server/data/medicine_dataset_cleaned.csv.gz"),
+    path.resolve(__dirname, "../data/medicine_dataset_cleaned.csv.gz"),
+    path.resolve(__dirname, "../../../api/model/medicine_dataset_cleaned.csv.gz"),
+    path.resolve(__dirname, "../../../api/model/medicine_dataset_cleaned.csv"),
+    path.resolve(process.cwd(), "data/medicine_dataset_cleaned.csv.gz"),
+    path.resolve(process.cwd(), "server/data/medicine_dataset_cleaned.csv.gz"),
+    path.resolve(process.cwd(), "api/model/medicine_dataset_cleaned.csv"),
+  ];
 
-const CSV_PATH = path.resolve(
-  __dirname,
-  "../../../api/model/medicine_dataset_cleaned.csv",
-);
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+
+  throw new Error(
+    `CSV dataset file not found in candidate locations:\n${candidatePaths.join("\n")}`
+  );
+};
 
 
 // ======================================================
@@ -51,15 +49,7 @@ const CSV_PATH = path.resolve(
 
 const importMedicines = async () => {
 
-  // --------------------------------------------------
-  // Check CSV
-  // --------------------------------------------------
-
-  if (!fs.existsSync(CSV_PATH)) {
-    throw new Error(
-      `CSV file not found:\n${CSV_PATH}`,
-    );
-  }
+  const CSV_PATH = resolveCsvPath();
 
 
   const client =
@@ -201,10 +191,13 @@ const importMedicines = async () => {
       ) as any;
 
 
+    const fileStream = fs.createReadStream(CSV_PATH);
+    const inputStream = CSV_PATH.endsWith(".gz")
+      ? fileStream.pipe(zlib.createGunzip())
+      : fileStream;
+
     await pipeline(
-      fs.createReadStream(
-        CSV_PATH,
-      ),
+      inputStream,
       copyStream,
     );
 
@@ -676,7 +669,11 @@ const importMedicines = async () => {
 // RUN IMPORT
 // ======================================================
 
-importMedicines()
+export { importMedicines };
+export default importMedicines;
+
+if (process.argv[1] && process.argv[1].includes("importMedicines")) {
+  importMedicines()
   .then(async () => {
 
     await pool.end();
@@ -689,3 +686,4 @@ importMedicines()
 
     process.exit(1);
   });
+}
