@@ -4,13 +4,35 @@
 
 
 -- ============================================
+-- DOCTORS
+-- Default login: doctor@medguard.com / password123
+-- ============================================
+
+INSERT INTO doctors
+(id, name, email, password_hash, specialization)
+VALUES
+(
+    1,
+    'Dr. John Doe',
+    'doctor@medguard.com',
+    '$2b$12$fFmX1faojRUJlxW19wCfkO0SHbJNxtnIzkLi1D.oPv.u.hrbcBJjy',
+    'General Physician'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Reset doctor sequence
+SELECT setval('doctors_id_seq', (SELECT COALESCE(MAX(id), 1) FROM doctors));
+
+
+-- ============================================
 -- PATIENTS
 -- ============================================
 
 INSERT INTO patients
-(name, age, gender, phone, email, blood_group)
+(doctor_id, name, age, gender, phone, email, blood_group)
 VALUES
 (
+    1,
     'Rahul Sharma',
     45,
     'Male',
@@ -19,6 +41,7 @@ VALUES
     'B+'
 ),
 (
+    1,
     'Priya Nair',
     32,
     'Female',
@@ -27,6 +50,7 @@ VALUES
     'O+'
 ),
 (
+    1,
     'Arjun Kumar',
     58,
     'Male',
@@ -35,6 +59,7 @@ VALUES
     'A+'
 ),
 (
+    1,
     'Sneha Reddy',
     27,
     'Female',

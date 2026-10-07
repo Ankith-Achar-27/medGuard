@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🛡️ MedGuard
 
 ### AI-Assisted Medication Safety & Adverse Drug Reaction Assessment Platform
@@ -696,6 +695,3 @@ Technologies used include:
 - Scikit-learn
 - Pandas
 - NumPy
-=======
-# Main-Project
->>>>>>> 3a584f5170c32fa948009b6771ed03911e1f425f
