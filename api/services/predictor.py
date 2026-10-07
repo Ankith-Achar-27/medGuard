@@ -36,6 +36,14 @@ class ADRPredictor:
             self.artifact.get("classifier")
         )
 
+        self.W = (
+            self.artifact.get("W")
+        )
+
+        self.b = (
+            self.artifact.get("b")
+        )
+
         self.classes = (
             self.artifact.get("classes")
         )
@@ -60,9 +68,9 @@ class ADRPredictor:
                 "adr_model.joblib"
             )
 
-        if self.classifier is None:
+        if self.classifier is None and self.W is None:
             raise ValueError(
-                "Classifier not found in "
+                "Neither classifier nor weight matrix found in "
                 "adr_model.joblib"
             )
 
@@ -228,20 +236,28 @@ class ADRPredictor:
         # Get classifier scores
         # ---------------------------------------------
 
-        scores = (
-            self.classifier
-            .decision_function(
-                features
+        if self.W is not None and self.b is not None:
+            # Ultra-lightweight matrix scoring (~30 MB RAM)
+            dot_product = features.dot(self.W.T)
+            if hasattr(dot_product, "toarray"):
+                sample_scores = dot_product.toarray()[0] + self.b
+            else:
+                sample_scores = dot_product[0] + self.b
+        else:
+            scores = (
+                self.classifier
+                .decision_function(
+                    features
+                )
             )
-        )
 
-        if len(scores.shape) == 1:
-            scores = scores.reshape(
-                1,
-                -1
-            )
+            if len(scores.shape) == 1:
+                scores = scores.reshape(
+                    1,
+                    -1
+                )
 
-        sample_scores = scores[0]
+            sample_scores = scores[0]
 
         # ---------------------------------------------
         # Sort scores
