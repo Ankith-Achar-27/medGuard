@@ -2,6 +2,13 @@
 
 ### AI-Assisted Medication Safety & Adverse Drug Reaction Assessment Platform
 
+[![Live App](https://img.shields.io/badge/Live%20Demo-Vercel-success?style=for-the-badge&logo=vercel)](https://med-guard-psi.vercel.app/)
+[![Backend](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render)](https://medguard-backend-9duu.onrender.com/api/health)
+[![Database](https://img.shields.io/badge/Database-Supabase%20Postgres-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
+
+> 🌐 **Live Demo**: [https://med-guard-psi.vercel.app](https://med-guard-psi.vercel.app)  
+> 🩺 **Default Login**: `doctor@medguard.com` | **Password**: `password123`
+
 MedGuard is a full-stack medical decision-support application designed to help healthcare professionals assess potential medication-related risks for patients.
 
 The system combines a **React frontend**, **Express backend**, **PostgreSQL database**, and **Flask-based ML API** to provide medicine information, adverse drug reaction (ADR) predictions, patient-specific safety assessments, medicine comparisons, and potential alternatives.
@@ -327,8 +334,8 @@ Medicine
 ## 1. Clone the repository
 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
-cd MedGuard
+git clone https://github.com/Ankith-Achar-27/medGuard.git
+cd medGuard
 ```
 
 ---
@@ -507,6 +514,30 @@ Then open the frontend:
 ```text
 http://localhost:5173
 ```
+
+---
+
+# 🚀 Cloud Deployment Architecture
+
+MedGuard is architected for zero-cost, multi-tier cloud hosting:
+
+| Component | Platform | URL / Configuration |
+| :--- | :--- | :--- |
+| **Frontend** | **Vercel** | [https://med-guard-psi.vercel.app](https://med-guard-psi.vercel.app) |
+| **Express Backend** | **Render** | `https://medguard-backend-9duu.onrender.com` |
+| **Database** | **Supabase** | Cloud PostgreSQL with SSL (`pg_trgm` enabled) |
+| **ML Engine** | **Hugging Face / Local** | Containerized Flask ADR Prediction Engine |
+
+### Production Environment Variables
+
+#### Backend (Render):
+- `DATABASE_URL`: Connection string to Supabase PostgreSQL (SSL enabled)
+- `JWT_SECRET`: Secure random string for session tokens
+- `PORT`: `5000`
+- `FLASK_URL`: URL of the ML prediction API
+
+#### Frontend (Vercel):
+- `VITE_API_URL`: `https://medguard-backend-9duu.onrender.com/api`
 
 ---
 
